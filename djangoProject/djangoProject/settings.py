@@ -144,3 +144,5 @@ STORAGES = {
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+NESHAN_API_KEY = "service.124861c588224f8490375c4d80207e14"
