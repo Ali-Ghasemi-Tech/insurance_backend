@@ -129,7 +129,12 @@ USE_TZ = True
 STATIC_URL = "static/"
 
 STORAGES = {
-    # ...
+   "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {
+            "location": "media",
+        },
+    },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
