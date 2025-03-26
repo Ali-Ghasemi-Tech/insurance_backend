@@ -25,7 +25,7 @@ class HospitalLocationsView(APIView):
             )
 
         try:
-            hospitals = Hospitals.objects.filter(insurance=insurance_name.trim())
+            hospitals = Hospitals.objects.filter(insurance=insurance_name)
             if not hospitals.exists():
                 return Response(
                     {'error': 'No hospitals found for this insurance'},
