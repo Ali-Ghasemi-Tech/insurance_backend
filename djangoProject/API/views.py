@@ -25,7 +25,7 @@ class HospitalLocationsView(APIView):
             )
 
         try:
-            hospitals = Hospitals.objects.filter(insurance=insurance_name)
+            hospitals = Hospitals.objects.filter(insurance=insurance_name.trim())
             if not hospitals.exists():
                 return Response(
                     {'error': 'No hospitals found for this insurance'},
@@ -60,6 +60,6 @@ class HospitalLocationsView(APIView):
         except Hospitals.DoesNotExist:
             return Response(
                 {'error': 'Insurance not found'},
-                status=status.HTTP_404_NOT_FOUND
+                status=status.HTTP_400_BAD_REQUEST
             )
   
