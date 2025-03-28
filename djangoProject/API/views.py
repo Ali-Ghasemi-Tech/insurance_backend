@@ -1,14 +1,14 @@
 import requests
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from concurrent.futures import ThreadPoolExecutor, as_completed
+
 from rest_framework import status
 from django.conf import settings
 from .models import Hospitals
 import logging
 import redis
 from django.http import HttpResponse
-from .tasks import fetch_hospital_location
-from celery.result import AsyncResult
 
 
 
@@ -40,24 +40,52 @@ class HospitalLocationsView(APIView):
                     status=status.HTTP_404_NOT_FOUND
                 )
 
-            task_ids = []
+            hospitals_list = list(hospitals)
+            locations = []
+            failed_hospitals = []
             
-            for hospital in hospitals:
+            def fetch_hospital_location(hospital):
                 try:
-                    task = fetch_hospital_location.delay(hospital.name, lat, lng)
-                    task_ids.append(task.id)
-                    return Response({'task_ids': task_ids},
-                        status=status.HTTP_202_ACCEPTED  # "Accepted" status code
+                    response = requests.get(
+                        'https://api.neshan.org/v1/search',
+                        headers={'Api-Key': settings.NESHAN_API_KEY},
+                        params={'term': hospital.name, 'lat': lat, 'lng': lng},
+                        timeout=10  # Add timeout
                     )
-                        
-                except requests.exceptions.RequestException as e:
-                    logger.error(f"Neshan API error for {hospital.name}: {str(e)}")
-                    continue
+                    response.raise_for_status()
+                    data = response.json()
+                    if data.get('items'):
+                        return data['items'][0]
+                    return None
+                except Exception as e:
+                    logger.error(f"Neshan API failed for {hospital.name}: {str(e)}")
+                    failed_hospitals.append(hospital.name)  # Track failed hospitals
+                    return None
+                
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                # Submit all hospitals to the executor
+                futures = {executor.submit(fetch_hospital_location, hospital): hospital.name 
+                           for hospital in hospitals_list}
+                
+                # Process results as they complete
+                for i, future in enumerate(as_completed(futures)):
+                    hospital_name = futures[future]
+                    try:
+                        result = future.result()
+                        if result:
+                            locations.append(result)
+                        # Log progress and remaining hospitals
+                        remaining = len(hospitals_list) - (i + 1)
+                        logger.info(f"Processed {hospital_name}. Remaining: {remaining}")
+                    except Exception as e:
+                        logger.error(f"Error processing {hospital_name}: {str(e)}")
 
-            return Response(
-            {'task_ids': task_ids},
-            status=status.HTTP_202_ACCEPTED  # "Accepted" status code
-        )
+            # Include failed hospitals in the response (optional)
+            response_data = {
+                'locations': locations,
+                'failed_hospitals': failed_hospitals  # If you want to report failures
+            }
+            return Response(response_data)   
 
         except Hospitals.DoesNotExist:
             return Response(
@@ -65,11 +93,4 @@ class HospitalLocationsView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
   
-class TaskStatusView(APIView):
-    def get(self, request, task_id):
-        task = AsyncResult(task_id)
-        return Response({
-            'status': task.status,
-            'result': task.result if task.ready() else None,
-            'error': str(task.info) if task.failed() else None
-        })
+
