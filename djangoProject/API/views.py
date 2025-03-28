@@ -8,6 +8,7 @@ from django.conf import settings
 from .models import Hospitals
 import logging
 from django.http import HttpResponse
+from time import sleep
 
 
 
@@ -81,7 +82,7 @@ class HospitalLocationsView(APIView):
                     response = requests.get(
                         f'https://map.ir/search/v2/autocomplete/?text={hospital.name}&%24select=nearby&%24filter=city eq {city}&lat={lat}&lon={lng}',
                         headers={'x-api-key': settings.MAP_IR_API_KEY},
-                        timeout=10  # Add timeout
+                        verify=False
                     )
                     response.raise_for_status()
                     data = response.json()
@@ -95,7 +96,7 @@ class HospitalLocationsView(APIView):
                     failed_hospitals.append(hospital.name)  # Track failed hospitals
                     return None
                 
-            with ThreadPoolExecutor(max_workers=10) as executor:
+            with ThreadPoolExecutor(max_workers=30) as executor:
                 # Submit all hospitals to the executor
                 futures = {executor.submit(fetch_hospital_location, hospital): hospital.name 
                            for hospital in hospitals_list}
