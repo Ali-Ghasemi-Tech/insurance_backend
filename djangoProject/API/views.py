@@ -42,20 +42,52 @@ class HospitalLocationsView(APIView):
             hospitals_list = list(hospitals)
             locations = []
             failed_hospitals = []
-            
+            city = 'تهران'
             def fetch_hospital_location(hospital):
+                # try:
+                #     response = requests.get(
+                #         'https://api.neshan.org/v1/search',
+                #         headers={'Api-Key': settings.NESHAN_API_KEY},
+                #         params={'term': hospital.name, 'lat': lat, 'lng': lng},
+                #         timeout=10  # Add timeout
+                #     )
+                #     response.raise_for_status()
+                #     data = response.json()
+                #     if data.get('items'):
+                #         for item in data['items']:
+                #             if item['type'] == 'hospital':
+                #                 return item
+                #     return None
+                # except Exception as e:
+                #     logger.error(f"Neshan API failed for {hospital.name}: {str(e)}")
+                #     failed_hospitals.append(hospital.name)  # Track failed hospitals
+                #     return None
                 try:
                     response = requests.get(
-                        'https://api.neshan.org/v1/search',
-                        headers={'Api-Key': settings.NESHAN_API_KEY},
-                        params={'term': hospital.name, 'lat': lat, 'lng': lng},
+                        "https://map.ir/reverse/fast-reverse",
+                        headers={'x-api-key': settings.MAP_IR_API_KEY},
+                        params={'lat':lat , 'lon':lng}
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    if data:
+                        city = data['city']
+            
+                except Exception as e:
+                    logger.error(f"Neshan API failed for city selection: {str(e)}")
+                    return None
+                try:
+                    response = requests.get(
+                        'https://map.ir/search/v2/autocomplete',
+                        headers={'x-api-key': settings.MAP_IR_API_KEY},
+                        params={'text': hospital.name, 'lat': lat, 'log': lng , '$filter': f'city eq{city}' , '$select': 'nearby'},
                         timeout=10  # Add timeout
                     )
                     response.raise_for_status()
                     data = response.json()
-                    if data.get('items'):
-                        for item in data['items']:
-                            if item['type'] == 'hospital':
+                    if data.get('value'):
+                        for item in data['value']:
+                            if item['fclass'] == 'hospital':
                                 return item
                     return None
                 except Exception as e:
