@@ -117,7 +117,6 @@ class HospitalLocationsView(APIView):
             response_data = {
                 'locations': locations,
                 'failed_hospitals': failed_hospitals,
-                'db_search': hospitals
             }
             return Response(response_data)   
 
