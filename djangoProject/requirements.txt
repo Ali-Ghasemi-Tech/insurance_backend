@@ -18,9 +18,11 @@ django-rest-framework==0.1.0
 django-sslserver==0.22
 django-werkzeug-debugger-runserver==0.3.1
 djangorestframework==3.15.2
+gunicorn==23.0.0
 idna==3.10
 kombu==5.5.1
 MarkupSafe==3.0.2
+packaging==24.2
 prompt_toolkit==3.0.50
 pycparser==2.22
 pyOpenSSL==25.0.0
