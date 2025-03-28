@@ -7,7 +7,6 @@ from rest_framework import status
 from django.conf import settings
 from .models import Hospitals
 import logging
-import redis
 from django.http import HttpResponse
 
 
@@ -54,8 +53,10 @@ class HospitalLocationsView(APIView):
                     )
                     response.raise_for_status()
                     data = response.json()
-                    if data.get('items') and data['items'][0].type == 'hospital':
-                        return data['items'][0]
+                    if data.get('items'):
+                        for item in data['items']:
+                            if item['type'] == 'hospital':
+                                return item
                     return None
                 except Exception as e:
                     logger.error(f"Neshan API failed for {hospital.name}: {str(e)}")
