@@ -43,6 +43,20 @@ class HospitalLocationsView(APIView):
             locations = []
             failed_hospitals = []
             city = 'تهران'
+            try:
+                    response = requests.get(
+                        "https://map.ir/reverse/fast-reverse",
+                        headers={'x-api-key': settings.MAP_IR_API_KEY},
+                        params={'lat':lat , 'lon':lng}
+                    )
+                    response.raise_for_status()
+                    data = response.json()
+                    if data:
+                        city = data['city']
+            
+            except Exception as e:
+                logger.error(f"Neshan API failed for city selection: {str(e)}")
+                return None
             def fetch_hospital_location(hospital):
                 # try:
                 #     response = requests.get(
@@ -62,20 +76,7 @@ class HospitalLocationsView(APIView):
                 #     logger.error(f"Neshan API failed for {hospital.name}: {str(e)}")
                 #     failed_hospitals.append(hospital.name)  # Track failed hospitals
                 #     return None
-                try:
-                    response = requests.get(
-                        "https://map.ir/reverse/fast-reverse",
-                        headers={'x-api-key': settings.MAP_IR_API_KEY},
-                        params={'lat':lat , 'lon':lng}
-                    )
-                    response.raise_for_status()
-                    data = response.json()
-                    if data:
-                        city = data['city']
-            
-                except Exception as e:
-                    logger.error(f"Neshan API failed for city selection: {str(e)}")
-                    return None
+                
                 try:
                     response = requests.get(
                         f'https://map.ir/search/v2/autocomplete/?text={hospital.name}&%24select=nearby&%24filter=city eq {city}&lat={lat}&lon={lng}',
@@ -115,7 +116,8 @@ class HospitalLocationsView(APIView):
             # Include failed hospitals in the response (optional)
             response_data = {
                 'locations': locations,
-                'failed_hospitals': failed_hospitals  # If you want to report failures
+                'failed_hospitals': failed_hospitals,
+                'db_search': hospitals
             }
             return Response(response_data)   
 
