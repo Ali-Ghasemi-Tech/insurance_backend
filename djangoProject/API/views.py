@@ -5,6 +5,14 @@ from rest_framework import status
 from django.conf import settings
 from .models import Hospitals
 import logging
+import redis
+from django.http import HttpResponse
+from .tasks import fetch_hospital_location
+from celery.result import AsyncResult
+
+
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -32,30 +40,24 @@ class HospitalLocationsView(APIView):
                     status=status.HTTP_404_NOT_FOUND
                 )
 
-            locations = []
+            task_ids = []
             
             for hospital in hospitals:
                 try:
-                    response = requests.get(
-                        'https://api.neshan.org/v1/search',
-                        headers={'Api-Key': settings.NESHAN_API_KEY},
-                        params={
-                            'term': hospital.name,
-                            'lat': lat,
-                            'lng': lng
-                        }
+                    task = fetch_hospital_location.delay(hospital.name, lat, lng)
+                    task_ids.append(task.id)
+                    return Response({'task_ids': task_ids},
+                        status=status.HTTP_202_ACCEPTED  # "Accepted" status code
                     )
-                    response.raise_for_status()
-                    
-                    data = response.json()
-                    if data.get('items') and len(data['items']) > 0:
-                        locations.append(data['items'][0])
                         
                 except requests.exceptions.RequestException as e:
                     logger.error(f"Neshan API error for {hospital.name}: {str(e)}")
                     continue
 
-            return Response({'locations': locations})
+            return Response(
+            {'task_ids': task_ids},
+            status=status.HTTP_202_ACCEPTED  # "Accepted" status code
+        )
 
         except Hospitals.DoesNotExist:
             return Response(
@@ -63,3 +65,11 @@ class HospitalLocationsView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
   
+class TaskStatusView(APIView):
+    def get(self, request, task_id):
+        task = AsyncResult(task_id)
+        return Response({
+            'status': task.status,
+            'result': task.result if task.ready() else None,
+            'error': str(task.info) if task.failed() else None
+        })

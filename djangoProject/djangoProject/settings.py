@@ -11,9 +11,16 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+import redis
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+CELERY_BROKER_URL = 'redis://:sf9GhNenhIXROtNqRFmaANXtJQHyQ5Pw@redis-16244.c311.eu-central-1-1.ec2.redns.redis-cloud.com:16244'  
+CELERY_RESULT_BACKEND = 'redis://:sf9GhNenhIXROtNqRFmaANXtJQHyQ5Pw@redis-16244.c311.eu-central-1-1.ec2.redns.redis-cloud.com:16244'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+redis_client = redis.Redis(..., ssl=True, ssl_cert_reqs=None)
 
 
 # Quick-start development settings - unsuitable for production
@@ -58,7 +65,7 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
 ]
 
-CORS_ALLOWED_ORIGINS = ["*"]
+CORS_ALLOWED_ORIGINS = ["http://*"]
 CORS_ALLOW_CREDENTIALS = True
 
 
