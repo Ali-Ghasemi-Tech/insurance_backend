@@ -56,7 +56,7 @@ class HospitalLocationsView(APIView):
             
             except Exception as e:
                 logger.error(f"Neshan API failed for city selection: {str(e)}")
-                return None
+                
             def fetch_hospital_location(hospital):
                 # try:
                 #     response = requests.get(
