@@ -78,20 +78,19 @@ class HospitalLocationsView(APIView):
                     return None
                 try:
                     response = requests.get(
-                        'https://map.ir/search/v2/autocomplete',
+                        f'https://map.ir/search/v2/autocomplete/?text={hospital.name}&%24select=nearby&%24filter=city eq {city}&lat={lat}&lon={lng}',
                         headers={'x-api-key': settings.MAP_IR_API_KEY},
-                        params={'text': hospital.name, 'lat': lat, 'log': lng , '$filter': f'city eq{city}' , '$select': 'nearby'},
                         timeout=10  # Add timeout
                     )
                     response.raise_for_status()
                     data = response.json()
                     if data.get('value'):
                         for item in data['value']:
-                            if item['fclass'] == 'hospital':
+                            if item['fclass'] in ['hospital' , 'hospital_section']:
                                 return item
                     return None
                 except Exception as e:
-                    logger.error(f"Neshan API failed for {hospital.name}: {str(e)}")
+                    logger.error(f"map.ir api failed to fetch data: {str(e)}")
                     failed_hospitals.append(hospital.name)  # Track failed hospitals
                     return None
                 
