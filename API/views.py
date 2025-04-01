@@ -43,20 +43,21 @@ class HospitalLocationsView(APIView):
             hospitals_list = list(hospitals)
             locations = []
             failed_hospitals = []
-            city = 'تهران'
+            province = 'تهران'
             try:
-                    response = requests.get(
-                        "https://map.ir/reverse/fast-reverse",
-                        headers={'x-api-key': settings.MAP_IR_API_KEY},
-                        params={'lat':lat , 'lon':lng}
-                    )
-                    response.raise_for_status()
-                    data = response.json()
-                    if data:
-                        city = data['city']
+                response = requests.get(
+                    "https://map.ir/reverse/fast-reverse",
+                    headers={'x-api-key': settings.MAP_IR_API_KEY},
+                    params={'lat':lat , 'lon':lng}
+                )
+                response.raise_for_status()
+                data = response.json()
+                print(data)
+                if data:
+                    province = data['province']
             
             except Exception as e:
-                logger.error(f"Neshan API failed for city selection: {str(e)}")
+                logger.error(f"Neshan API failed for province selection: {str(e)}")
                 
             def fetch_hospital_location(hospital):
                 # try:
@@ -80,7 +81,7 @@ class HospitalLocationsView(APIView):
                 
                 try:
                     response = requests.get(
-                        f'https://map.ir/search/v2/autocomplete/?text={hospital.name}&%24select=nearby&%24filter=city eq {city}&lat={lat}&lon={lng}',
+                        f'https://map.ir/search/v2/autocomplete/?text={hospital.name}&%24select=nearby&%24filter=province eq {province}&lat={lat}&lon={lng}',
                         headers={'x-api-key': settings.MAP_IR_API_KEY},
                         verify=False
                     )
@@ -96,7 +97,7 @@ class HospitalLocationsView(APIView):
                     failed_hospitals.append(hospital.name)  # Track failed hospitals
                     return None
                 
-            with ThreadPoolExecutor(max_workers=5) as executor:
+            with ThreadPoolExecutor(max_workers=10) as executor:
                 # Submit all hospitals to the executor
                 futures = {executor.submit(fetch_hospital_location, hospital): hospital.name 
                            for hospital in hospitals_list}
