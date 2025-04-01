@@ -96,7 +96,7 @@ class HospitalLocationsView(APIView):
                     failed_hospitals.append(hospital.name)  # Track failed hospitals
                     return None
                 
-            with ThreadPoolExecutor(max_workers=30) as executor:
+            with ThreadPoolExecutor(max_workers=5) as executor:
                 # Submit all hospitals to the executor
                 futures = {executor.submit(fetch_hospital_location, hospital): hospital.name 
                            for hospital in hospitals_list}
