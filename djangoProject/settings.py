@@ -44,7 +44,11 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "rest_framework",
+    # local apps
     "API",
+    
+    # third party apps 
+    'adrf',
     'sslserver',
     'django_extensions',
     'corsheaders',
