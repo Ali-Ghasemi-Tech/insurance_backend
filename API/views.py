@@ -18,19 +18,27 @@ from asgiref.sync import sync_to_async
 
 logger = logging.getLogger(__name__)
 
-sem = asyncio.Semaphore(30)
+cache = caches['default']
 @sync_to_async
 def get_hospitals(insurance_name):
-    hospitals = Hospitals.objects.filter(insurance=insurance_name)
-    return list(hospitals) if hospitals.exists() else None
+    cache_key = f"hospitals_{insurance_name}"
+    result = cache.get(cache_key)
+    if result is None:
+        hospitals = Hospitals.objects.filter(insurance=insurance_name)
+                # Cache empty lists too to prevent cache penetration
+        cache.set(cache_key, list(hospitals) if hospitals.exists else None, 3600)  # 1 hour cache
+        return list(hospitals) if hospitals.exists() else None
+    return result
+    
 
-cache = caches['default']
 class HospitalLocationsView(views.APIView):
     """
     Class-based view to handle insurance-based hospital location searches
     """
     
     async def get(self, request, *args, **kwargs):
+        sem = asyncio.Semaphore(10)
+
         insurance_name = request.query_params.get('insurance_name')
         lat = request.query_params.get('lat')
         lng = request.query_params.get('lng')
@@ -100,7 +108,7 @@ class HospitalLocationsView(views.APIView):
                             data = response.json()
                             if data.get('value'):
                                 for item in data['value']:
-                                    if item['fclass'] in ['hospital' , 'hospital_section']:
+                                    if item['fclass'] in ['hospital' , 'hospital_section'] and not any(word in item['title'] for word in ['دام پزشکی', 'دامپزشکی']):
                                         return item
                             return None
                         except Exception as e:
