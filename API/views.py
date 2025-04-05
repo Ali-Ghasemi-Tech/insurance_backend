@@ -6,7 +6,6 @@ from rest_framework.response import Response
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from django.core.cache import caches
 
-
 from rest_framework import status
 from django.conf import settings
 from .models import Hospitals
@@ -20,14 +19,25 @@ logger = logging.getLogger(__name__)
 
 cache = caches['default']
 @sync_to_async
-def get_hospitals(insurance_name):
-    cache_key = f"hospitals_{insurance_name}"
+def get_hospitals(insurance_name , city):
+    logger.info(
+        f"Request received - Insurance: '{insurance_name}', City: '{city}'"
+    )
+    cache_key = f"hospitals_{insurance_name}_{city}"
     result = cache.get(cache_key)
     if result is None:
-        hospitals = Hospitals.objects.filter(insurance=insurance_name)
-                # Cache empty lists too to prevent cache penetration
-        cache.set(cache_key, list(hospitals) if hospitals.exists else None, 3600)  # 1 hour cache
+        logger.info(
+            f"Cache MISS for Insurance: '{insurance_name}', City: '{city}'. Fetching from DB."
+        )
+        hospitals = Hospitals.objects.filter(insurance=insurance_name , city = city)
+        cache.set(cache_key, list(hospitals) if hospitals.exists else None, 86400)  
+        logger.info(
+            f"Fetched {len(result) if result else 0} records from DB for Insurance: '{insurance_name}', City: '{city}'."
+        )
         return list(hospitals) if hospitals.exists() else None
+    logger.info(
+            f"Cache HIT for Insurance: '{insurance_name}', City: '{city}'. Returning cached data."
+        )
     return result
     
 
@@ -57,27 +67,37 @@ class HospitalLocationsView(views.APIView):
 
 
         try:
-            hospital_list = await get_hospitals(insurance_name = insurance_name)
+            province = 'تهران'
+            city = 'تهران'
+            # get user province and city
+            try:
+                response = requests.get(
+                    "https://map.ir/reverse/fast-reverse",
+                    headers={'x-api-key': settings.MAP_IR_API_KEY},
+                    params={'lat':lat , 'lon':lng}
+                )
+                response.raise_for_status()
+                province = response.json().get('province')
+                city = response.json().get('city')
+                if city == '':
+                    city = None
+                elif province == '':
+                    province == None
+                
+            except Exception as e:
+                logger.error(f"Neshan API failed for province selection: {str(e)}")
+                
+            hospital_list = await get_hospitals(insurance_name = insurance_name , city= city or province)
 
             if not hospital_list:
                 return Response({'error': 'no hospitals found for this insurance'} , status=status.HTTP_404_NOT_FOUND)
             
             locations = []
             failed_hospitals = []
-            province = 'تهران'
+            
+            # find hospitals around the user locaion
             async with httpx.AsyncClient(timeout=10.0) as client:
-                try:
-                    response = await client.get(
-                        "https://map.ir/reverse/fast-reverse",
-                        headers={'x-api-key': settings.MAP_IR_API_KEY},
-                        params={'lat':lat , 'lon':lng}
-                    )
-                    response.raise_for_status()
-                    province = response.json().get('province', 'تهران')
-
                 
-                except Exception as e:
-                    logger.error(f"Neshan API failed for province selection: {str(e)}")
                     
                 async def fetch_hospital_location(hospital):
                     # try:
@@ -100,8 +120,12 @@ class HospitalLocationsView(views.APIView):
                     #     return None
                     async with sem:
                         try:
-                            response = await client.get(
-                                f'https://map.ir/search/v2/autocomplete/?text={hospital.name}&%24select=nearby&%24filter=province eq {province}&lat={lat}&lon={lng}',
+                            request = f'https://map.ir/search/v2/autocomplete/?text={hospital.name}&%24select=nearby&%24filter=province eq {province}&lat={lat}&lon={lng}'
+                            
+                            if city:
+                                request = f'https://map.ir/search/v2/autocomplete/?text={hospital.name}&%24select=nearby&%24filter=city eq {city}&lat={lat}&lon={lng}'
+                                
+                            response = await client.get(request,
                                 headers={'x-api-key': settings.MAP_IR_API_KEY},
                             )
                             response.raise_for_status()
@@ -154,7 +178,7 @@ class HospitalLocationsView(views.APIView):
                 'locations': locations,
                 'failed_hospitals': failed_hospitals,
             }
-            await sync_to_async(cache.set)(cache_key, response_data, 86400)
+            await sync_to_async(cache.set)(cache_key, response_data, 3600)
 
             return Response(response_data)   
 
