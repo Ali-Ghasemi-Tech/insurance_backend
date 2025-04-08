@@ -52,10 +52,11 @@ class HospitalLocationsView(views.APIView):
         insurance_name = request.query_params.get('insurance_name')
         lat = request.query_params.get('lat')
         lng = request.query_params.get('lng')
+        selected_city = request.query_params.get('city')
 
-        if not all([insurance_name, lat, lng]):
+        if not all([insurance_name, lat, lng, selected_city]):
             return Response(
-                {'error': 'Missing required parameters: insurance_name, lat, lng'},
+                {'error': 'Missing required parameters: insurance_name, lat, lng , city'},
                 status=status.HTTP_400_BAD_REQUEST
             )
             
@@ -69,23 +70,27 @@ class HospitalLocationsView(views.APIView):
         try:
             province = 'تهران'
             city = 'تهران'
-            # get user province and city
-            try:
-                response = requests.get(
-                    "https://map.ir/reverse/fast-reverse",
-                    headers={'x-api-key': settings.MAP_IR_API_KEY},
-                    params={'lat':lat , 'lon':lng}
-                )
-                response.raise_for_status()
-                province = response.json().get('province')
-                city = response.json().get('city')
-                if city == '':
-                    city = None
-                elif province == '':
-                    province == None
-                
-            except Exception as e:
-                logger.error(f"Neshan API failed for province selection: {str(e)}")
+            
+            if selected_city != 'مکان فعلی من':
+                city = selected_city
+                province = selected_city
+            else:
+                try:
+                    response = requests.get(
+                        "https://map.ir/reverse/fast-reverse",
+                        headers={'x-api-key': settings.MAP_IR_API_KEY},
+                        params={'lat':lat , 'lon':lng}
+                    )
+                    response.raise_for_status()
+                    province = response.json().get('province')
+                    city = response.json().get('city')
+                    if city == '':
+                        city = None
+                    elif province == '':
+                        province == None
+                    
+                except Exception as e:
+                    logger.error(f"Neshan API failed for province selection: {str(e)}")
                 
             hospital_list = await get_hospitals(insurance_name = insurance_name , city= city or province)
 

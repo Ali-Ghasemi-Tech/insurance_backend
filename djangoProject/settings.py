@@ -91,7 +91,7 @@ MIDDLEWARE = [
     "whitenoise.middleware.WhiteNoiseMiddleware",
 ]
 
-CORS_ALLOWED_ORIGINS = ["http://*"]
+CORS_ALLOWED_ORIGINS = ["https://*" , "http://*"]
 CORS_ALLOW_CREDENTIALS = True
 
 
