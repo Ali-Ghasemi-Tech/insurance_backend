@@ -30,7 +30,8 @@ def get_hospitals(insurance_name , city):
             f"Cache MISS for Insurance: '{insurance_name}', City: '{city}'. Fetching from DB."
         )
         hospitals = Hospitals.objects.filter(insurance=insurance_name , city = city)
-        cache.set(cache_key, list(hospitals) if hospitals.exists else None, 86400)  
+        if hospitals.exists:
+            cache.set(cache_key, list(hospitals), 86400)  
         logger.info(
             f"Fetched {len(result) if result else 0} records from DB for Insurance: '{insurance_name}', City: '{city}'."
         )
@@ -125,7 +126,7 @@ class HospitalLocationsView(views.APIView):
                     #     return None
                     async with sem:
                         try:
-                            request = f'https://map.ir/search/v2/autocomplete/?text={hospital.name}&%24select=nearby&%24filter=province eq {province}&lat={lat}&lon={lng}'
+                            request = f'https://map.ir/search/v2/autocomplete/?text={hospital.name}&%24filter=province eq {province}&lat={lat}&lon={lng}'
                             
                             if city:
                                 request = f'https://map.ir/search/v2/autocomplete/?text={hospital.name}&%24select=nearby&%24filter=city eq {city}&lat={lat}&lon={lng}'
