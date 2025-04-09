@@ -47,7 +47,7 @@ class HospitalLocationsView(views.APIView):
     """
     
     async def get(self, request, *args, **kwargs):
-        sem = asyncio.Semaphore(10)
+        sem = asyncio.Semaphore(30)
 
         insurance_name = request.query_params.get('insurance_name')
         lat = request.query_params.get('lat')
