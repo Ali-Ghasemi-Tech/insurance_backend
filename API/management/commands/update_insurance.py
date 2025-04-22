@@ -8,12 +8,14 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         # insurance = 'ایران'
         # Hospitals.objects.filter(pk__lte=30).update(insurance=insurance)
-        keyword = 'اصفحان'
+        keyword = 'دندانپزشك '
         
-        hospitals = Hospitals.objects.filter(city = keyword)
+        hospitals = Hospitals.objects.filter(Q(name__icontains = keyword))
         for hospital in hospitals:
-            hospital.city ="اصفهان"
+            # if hospital.medical_class in hospital.name:
+            #     print('this is working')
+            hospital.medical_class = 'دندان پزشکی'
             hospital.save()
-            self.stdout.write(self.style.SUCCESS(f'Successfully updated: {hospital.city}'))
+            self.stdout.write(self.style.SUCCESS(f'Successfully updated: {hospital.name} , {hospital.medical_class}'))
 
         

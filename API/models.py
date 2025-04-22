@@ -10,3 +10,4 @@ class Hospitals(models.Model):
     phone = models.CharField(max_length=256, blank= True , null= True)
     services = models.TextField(null= True , blank= True)
     address = models.TextField(null= True , blank=True)
+    medical_class = models.CharField(default= 'بیمارستان' , max_length= 256)
