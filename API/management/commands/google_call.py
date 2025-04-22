@@ -78,6 +78,8 @@ class Command(BaseCommand):
                         print(name + f"at index : {end_index}")
                         print(facility + f"at index : {start_index}")
                         print(substring)
+                        hospital.name = substring
+                        hospital.save()
                     except Exception as e:
                         print(f'error for {hospital.name}' + str(e))
                         print(title)
@@ -97,7 +99,10 @@ class Command(BaseCommand):
         
     def handle(self, *args, **options):
         medical = ['بیمارستان' ,'بیمارستان' ,  'دندانپزشکی' , 'دندان پزشکی' , 'درمانگاه' , 'آزمایشگاه' , 'داروخانه' , 'چشم پزشکی' , "روانپزشكي" , "روان پزشکی" , "روانپزشکی" , "دکتر" , "کلینیک"]
-        hospitals = Hospitals.objects.filter(~Q(name__icontains = medical))
+        query = Q()
+        for term in medical:
+            query |= Q(name__icontains=term)
+        hospitals = Hospitals.objects.exclude(query)
         
         MIN_DELAY = 2  # Minimum delay between requests in seconds
         MAX_DELAY = 5  # Maximum delay between requests
