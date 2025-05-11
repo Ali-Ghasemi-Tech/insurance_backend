@@ -19,17 +19,17 @@ logger = logging.getLogger(__name__)
 
 cache = caches['default']
 @sync_to_async
-def get_hospitals(insurance_name , city):
+def get_hospitals(insurance_name , city = "تهران" , medical_class = "بیمارستان"):
     logger.info(
-        f"Request received - Insurance: '{insurance_name}', City: '{city}'"
+        f"Request received - Insurance: '{insurance_name}', City: '{city}' , Class: '{medical_class}'"
     )
-    cache_key = f"hospitals_{insurance_name}_{city}"
+    cache_key = f"hospitals_{insurance_name}_{city}_{medical_class}"
     result = cache.get(cache_key)
     if result is None:
         logger.info(
-            f"Cache MISS for Insurance: '{insurance_name}', City: '{city}'. Fetching from DB."
+            f"Cache MISS for Insurance: '{insurance_name}', City: '{city}' , Class: '{medical_class}'. Fetching from DB."
         )
-        hospitals = Hospitals.objects.filter(insurance=insurance_name , city = city)
+        hospitals = Hospitals.objects.filter(insurance=insurance_name , city = city , medical_class = medical_class)
         if hospitals.exists:
             cache.set(cache_key, list(hospitals), 86400)  
         logger.info(
@@ -48,20 +48,21 @@ class HospitalLocationsView(views.APIView):
     """
     
     async def get(self, request, *args, **kwargs):
-        sem = asyncio.Semaphore(30)
+        sem = asyncio.Semaphore(10)
 
         insurance_name = request.query_params.get('insurance_name')
         lat = request.query_params.get('lat')
         lng = request.query_params.get('lng')
         selected_city = request.query_params.get('city')
+        selected_class = request.query_params.get('medical_class')
 
-        if not all([insurance_name, lat, lng, selected_city]):
+        if not all([insurance_name, lat, lng]):
             return Response(
                 {'error': 'Missing required parameters: insurance_name, lat, lng , city'},
                 status=status.HTTP_400_BAD_REQUEST
             )
             
-        cache_key = f"hospitals_{insurance_name}_{lat}_{lng}"
+        cache_key = f"hospitals_{insurance_name}_{lat}_{lng}_{selected_class}"
         cached_response = await sync_to_async(cache.get)(cache_key)
         if cached_response is not None:
             logger.info(f"Returning cached response for {cache_key}")
@@ -92,11 +93,12 @@ class HospitalLocationsView(views.APIView):
                     
                 except Exception as e:
                     logger.error(f"Neshan API failed for province selection: {str(e)}")
+                    return Response({'error': 'could not find your current location'} , status= status.HTTP_404_NOT_FOUND)
                 
-            hospital_list = await get_hospitals(insurance_name = insurance_name , city= city or province)
+            hospital_list = await get_hospitals(insurance_name = insurance_name , city= city or province , medical_class=selected_class )
 
             if not hospital_list:
-                return Response({'error': 'no hospitals found for this insurance'} , status=status.HTTP_404_NOT_FOUND)
+                return Response({'error': f'هیچ {selected_class.strip()} برای بیمه {insurance_name.strip()} در شهر {city.strip()} یافت نشد.'}  , status=status.HTTP_404_NOT_FOUND)
             
             locations = []
             failed_hospitals = []
@@ -129,7 +131,7 @@ class HospitalLocationsView(views.APIView):
                             request = f'https://map.ir/search/v2/autocomplete/?text={hospital.name}&%24filter=province eq {province}&lat={lat}&lon={lng}'
                             
                             if city:
-                                request = f'https://map.ir/search/v2/autocomplete/?text={hospital.name}&%24select=nearby&%24filter=city eq {city}&lat={lat}&lon={lng}'
+                                request = f'https://map.ir/search/v2/autocomplete/?text={hospital.name}&%24filter=city eq {city}&lat={lat}&lon={lng}'
                                 
                             response = await client.get(request,
                                 headers={'x-api-key': settings.MAP_IR_API_KEY},
@@ -138,13 +140,13 @@ class HospitalLocationsView(views.APIView):
                             data = response.json()
                             if data.get('value'):
                                 for item in data['value']:
-                                    if item['fclass'] in ['hospital' , 'hospital_section'] and not any(word in item['title'] for word in ['دام پزشکی', 'دامپزشکی']):
+                                    if selected_class in item['title']:
                                         return item
                             return None
                         except Exception as e:
                             logger.error(f"map.ir api failed to fetch data: {str(e)}")
                             failed_hospitals.append(hospital.name)  # Track failed hospitals
-                            return None
+                            return Response({'error': 'سرور برای پیدا کردن اطلاعات مورد نظر شکست خورد.'} , status=status.HTTP_500_INTERNAL_SERVER_ERROR)
                 
             # with ThreadPoolExecutor(max_workers=10) as executor:
             #     # Submit all hospitals to the executor
@@ -167,6 +169,10 @@ class HospitalLocationsView(views.APIView):
                 tasks = [fetch_hospital_location(hospital) for hospital in hospital_list]
                 total = len(tasks)
                 processed = 0
+                searched_hospitals =[]
+                for hospital in hospital_list:
+                    
+                    searched_hospitals.append(hospital.name) 
                 
                 for future in asyncio.as_completed(tasks):
                     result = await future
@@ -183,15 +189,13 @@ class HospitalLocationsView(views.APIView):
             response_data = {
                 'locations': locations,
                 'failed_hospitals': failed_hospitals,
+                'searched hospitals' : searched_hospitals
             }
             await sync_to_async(cache.set)(cache_key, response_data, 3600)
 
             return Response(response_data)   
 
         except Hospitals.DoesNotExist:
-            return Response(
-                {'error': 'Insurance not found'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+             return Response({'error': f'هیچ {selected_class.strip()} برای بیمه {insurance_name.strip()} در شهر {city.strip()} یافت نشد.'} , status=status.HTTP_404_NOT_FOUND)
   
 

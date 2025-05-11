@@ -11,6 +11,10 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 """
 
 from pathlib import Path
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -182,5 +186,5 @@ STORAGES = {
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-NESHAN_API_KEY = "service.124861c588224f8490375c4d80207e14"
-MAP_IR_API_KEY ="eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImp0aSI6IjUzYjMwNjhmOWMyNjhmMmFiZGYyNmY3NDAwNjc5Y2YwMWExMzkzMzI2Mjg0Yzg2MzQxNjc5OGQ3NGFmM2FmMmM1ZGJhMTdmMDM0OTYzZjI3In0.eyJhdWQiOiIzMTY5OSIsImp0aSI6IjUzYjMwNjhmOWMyNjhmMmFiZGYyNmY3NDAwNjc5Y2YwMWExMzkzMzI2Mjg0Yzg2MzQxNjc5OGQ3NGFmM2FmMmM1ZGJhMTdmMDM0OTYzZjI3IiwiaWF0IjoxNzQzMTc4OTYzLCJuYmYiOjE3NDMxNzg5NjMsImV4cCI6MTc0NTc3MDk2Mywic3ViIjoiIiwic2NvcGVzIjpbImJhc2ljIl19.RF6nrZU2a1egkstjcYC1JHE9C7SJKlJx_EzDNJdzFV3VT1glQguFY2tw9mzQ8cOZjyKGjtswSnYZN-I3vU3f0oPX0IBaV7KT57yMrKPANtY6KFwm717qdJNGImQ7Gbasu57Kx7UoColC9zZuu_t97Ne4UA43OQoEGPAaWwFrhkUZtorzPgoMemkIzTE9etVbB6xrIZ5lJxs0IP48SPMPpWJ-5yd73zz8Go0ilckry4j3cAOhXzLIlrGASSeJHws_W3z2dqVQkTO46i9ECDVtQfiyMZKc8GvoJAcZhwMj8uV4oi3_mlfkDLwMM-Nb55adloGNZABI-uIhPMsGfT53rQ"
+NESHAN_API_KEY = os.getenv("NESHAN_API")
+MAP_IR_API_KEY =os.getenv("MAP_API")

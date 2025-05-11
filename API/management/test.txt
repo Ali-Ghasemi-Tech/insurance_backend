@@ -1,0 +1,13 @@
+DevTools listening on ws://127.0.0.1:5418/devtools/browser/95586044-ee50-48fc-96a4-732c624eb087
+error for رازیsubstring not found
+مرکز تخصصی چشم پزشک رازی محله گاندی تهران؛ آدرس، تلفن، ساعت کاری | نقشه ...
+error for ابن سيناsubstring not found
+️ آدرس و شماره تلفن بیمارستان ابن سینا تهران در شهر تهران - نوبت دهی ...
+
+DevTools listening on ws://127.0.0.1:5442/devtools/browser/19c86804-08f5-408d-b71e-f105ec6bb4c0
+error for اميرالمومنين (ع)substring not found
+نوبت دهی بیمارستان امیر المومنین (ع) تهران، تلفن و آدرس مرکز
+
+DevTools listening on ws://127.0.0.1:5464/devtools/browser/46f87537-0287-4b70-84d2-b6a976e77f03
+error for کیانsubstring not found
+بيمارستان فوق تخصصي كيان تهران صفحه نخست - kian-hospital.com
